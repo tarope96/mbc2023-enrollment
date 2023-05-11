@@ -1,40 +1,40 @@
 import Float "mo:base/Float";
-actor {
+actor Calculator {
     var counter : Float = 0;
 
-    public func add(x : Float) : async Float {
+    public shared func add(x : Float) : async Float {
         counter := (counter + x);
         return counter;
     };
-    public func sub(x : Float) : async Float {
+    public shared func sub(x : Float) : async Float {
         counter := (counter - x);
         return counter;
     };
-    public func mul(x : Float) : async Float {
+    public shared func mul(x : Float) : async Float {
         counter := (counter * x);
         return counter;
     };
-    public func div(x : Float) : async Float {
+    public shared func div(x : Float) : async Float {
         if (x == 0) {
             return 0;
         };
         counter := (counter / x);
         return counter;
     };
-    public func reset() : async () {
+    public shared func reset() : async () {
         counter := 0;
     };
-    public query func see() : async Float {
+    public shared query func see() : async Float {
         return counter;
     };
-    public func power(x : Float) : async Float {
+    public shared func power(x : Float) : async Float {
         counter := (counter ** x);
         return counter;
     };
-    public func sqrt() : async Float {
+    public shared func sqrt() : async Float {
         return Float.sqrt(counter)
     };
-    public func floor() : async Float {
-        return Float.floor(counter);
+    public shared func floor() : async Int {
+        return Float.toInt(Float.floor(counter));
     };
 };
