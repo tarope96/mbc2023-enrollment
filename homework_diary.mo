@@ -8,7 +8,7 @@ actor HomeworkDiary {
     type Homework = {
         titulo : Text;
         descripcion : Text;
-        fechaVencimiento : Time;
+        fechaVencimiento : Time.Time;
         completado : Bool;
     };
     let homeworkDiary = Buffer.Buffer<Homework>(1);
