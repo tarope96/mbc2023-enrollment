@@ -4,8 +4,20 @@
       "main": "main.mo",
       "type": "motoko"
     },
-    "calculadora": {
-      "main": "calculadora.mo",
+    "day1": {
+      "main": "calculator.mo",
+      "type": "motoko"
+    },
+    "day2": {
+      "main": "homework_diary.mo",
+      "type": "motoko"
+    },
+    "day3": {
+      "main": "student_wall.mo",
+      "type": "motoko"
+    },
+    "day4": {
+      "main": "moto_coin.mo",
       "type": "motoko"
     }
   }
