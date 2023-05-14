@@ -15,9 +15,13 @@ actor Verifier {
         team : Text;
         graduate : Bool;
     };
-    let studentProfileStore = HashMap.HashMap<Principal, StudentProfile>(1, Principal.equal, Principal.hash);
+    let studentProfileStore = HashMap.HashMap<Principal, StudentProfile>(0, Principal.equal, Principal.hash);
 
     public shared ({ caller }) func addMyProfile(profile : StudentProfile) : async Result.Result<(), Text> {
+        if (Principal.isAnonymous(caller)) {
+            return #err "You must be Logged In";
+        };
+
         let student = studentProfileStore.get(caller);
         switch (student) {
             case (null) {
@@ -30,7 +34,11 @@ actor Verifier {
         };
     };
 
-    public query func seeAProfile(p : Principal) : async Result.Result<StudentProfile, Text> {
+    public query ({ caller }) func seeAProfile(p : Principal) : async Result.Result<StudentProfile, Text> {
+        if (Principal.isAnonymous(caller)) {
+            return #err "You must be Logged In";
+        };
+        
         let student = studentProfileStore.get(p);
         switch (student) {
             case (?value) {
@@ -43,10 +51,14 @@ actor Verifier {
     };
 
     public shared ({ caller }) func updateMyProfile(profile : StudentProfile) : async Result.Result<(), Text> {
+        if (Principal.isAnonymous(caller)) {
+            return #err "You must be Logged In";
+        };
+
         let student = studentProfileStore.get(caller);
         switch (student) {
             case (?value) {
-                studentProfileStore.put(caller, profile);
+                ignore studentProfileStore.replace(caller, profile);
                 #ok();
             };
             case (null) {
@@ -56,6 +68,10 @@ actor Verifier {
     };
 
     public shared ({ caller }) func deleteMyProfile(profile : StudentProfile) : async Result.Result<(), Text> {
+        if (Principal.isAnonymous(caller)) {
+            return #err "You must be Logged In";
+        };
+
         let student = studentProfileStore.get(caller);
         switch (student) {
             case (?value) {
@@ -77,26 +93,26 @@ actor Verifier {
     public shared func test(canisterId : Principal) : async TestResult {
         try {
             let invoiceCalculator : actor {
-                add : shared (x : Int) -> async Int;
-                sub : shared (x : Int) -> async Int;
+                add : shared (x : Nat) -> async Int;
+                sub : shared (x : Nat) -> async Int;
                 reset : shared () -> async Int;
             } = actor (Principal.toText(canisterId));
-            var num = await invoiceCalculator.reset();
-            if (num == 0) {
-                return #ok();
+            let x1 : Int = await invoiceCalculator.reset();
+            if (x1 != 0) {
+                return #err(#UnexpectedValue("After a reset, counter should be 0!"));
             };
 
-            num := await invoiceCalculator.add(1);
-            if (num == 1) {
-                return #ok();
+            let x2 : Int = await invoiceCalculator.add(2);
+            if (x2 != 2) {
+                return #err(#UnexpectedValue("After 0 + 2, counter should be 2!"));
             };
 
-            num := await invoiceCalculator.sub(1);
-            if (num == 0) {
-                return #ok();
+            let x3 : Int = await invoiceCalculator.sub(2);
+            if (x3 != 0) {
+                return #err(#UnexpectedValue("After 2 - 2, counter should be 0!"));
             };
 
-            #err(#UnexpectedValue "Unexpected Value");
+            return #ok();
 
         } catch (e) {
             #err(#UnexpectedError "not implemented");
@@ -124,11 +140,11 @@ actor Verifier {
             });
             return status.controllers;
         } catch (e) {
-            return await parseControllersFromCanisterStatusErrorIfCallerNotController(Error.message(e));
+            return parseControllersFromCanisterStatusErrorIfCallerNotController(Error.message(e));
         };
     };
 
-    public func parseControllersFromCanisterStatusErrorIfCallerNotController(errorMessage : Text) : async [Principal] {
+    private func parseControllersFromCanisterStatusErrorIfCallerNotController(errorMessage : Text) : [Principal] {
         let lines = Iter.toArray(Text.split(errorMessage, #text("\n")));
         let words = Iter.toArray(Text.split(lines[1], #text(" ")));
         var i = 2;
@@ -159,25 +175,32 @@ actor Verifier {
 
     //Parte 4
     public shared func verifyWork(canisterId : Principal, principalId : Principal) : async Result.Result<(), Text> {
-        let verify = await verifyOwnership(canisterId, principalId);
-        if (verify) {
-            let student = studentProfileStore.get(principalId);
-            switch (student) {
-                case (?value) {
-                    let s : StudentProfile = {
-                        name = value.name;
-                        team = value.team;
-                        graduate = true;
-                    };
-                    studentProfileStore.put(principalId, s);
-                    #ok();
+        try {
+            let isApproved = await test(canisterId);
+            if (isApproved != #ok) {
+                return #err("The current work has no passed the tests");
+            };
+            let isOwner = await verifyOwnership(canisterId, principalId);
+            if (not isOwner) {
+                return #err("The received work owner does not match with the received principal");
+            };
+            var xProfile : ?StudentProfile = studentProfileStore.get(principalId);
+            switch (xProfile) {
+                case null {
+                    return #err("The received principal does not belongs to a registered student");
                 };
-                case (null) {
-                    #err("Student not found");
+                case (?profile) {
+                    var updatedStudent = {
+                        name = profile.name;
+                        graduate = true;
+                        team = profile.team;
+                    };
+                    ignore studentProfileStore.replace(principalId, updatedStudent);
+                    return #ok();
                 };
             };
-        } else {
-            #err("Verify Owner ship failure!");
+        } catch (e) {
+            return #err("Cannot verify the project");
         };
     };
 };
