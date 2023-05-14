@@ -19,6 +19,10 @@
     "day4": {
       "main": "moto_coin.mo",
       "type": "motoko"
+    },
+    "day5": {
+      "main": "verifier.mo",
+      "type": "motoko"
     }
   }
 }
